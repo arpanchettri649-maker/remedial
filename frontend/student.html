@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <title>College Attendance System - Student</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: Arial, sans-serif;
+            background: #f0f4f8;
+        }
+        
+        .topbar {
+            background: #2980b9;
+            color: white;
+            padding: 14px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .topbar h2 {
+            font-size: 20px;
+            font-family: Georgia, serif;
+            letter-spacing: 1px;
+        }
+        
+        .logout {
+            background: #e74c3c;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+        
+        .container {
+            max-width: 750px;
+            margin: 20px auto;
+            padding: 0 15px;
+        }
+        
+        .card {
+            background: white;
+            padding: 20px;
+            margin-bottom: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            text-align: center;
+        }
+        
+        .card h3 {
+            font-size: 16px;
+            color: #2c3e50;
+            border-bottom: 2px solid #eee;
+            padding-bottom: 10px;
+            margin-bottom: 15px;
+            text-align: left;
+        }
+        
+        input {
+            width: 90%;
+            padding: 10px 12px;
+            border: 1px solid #ddd;
+            border-radius: 7px;
+            font-size: 14px;
+            margin-bottom: 10px;
+        }
+        
+        input:focus {
+            outline: none;
+            border-color: #2980b9;
+        }
+        
+        .btn {
+            width: 60%;
+            padding: 11px;
+            border: none;
+            border-radius: 7px;
+            font-size: 15px;
+            font-weight: bold;
+            color: white;
+            cursor: pointer;
+            background: #2980b9;
+        }
+        
+        .btn:hover {
+            background: #1f6391;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+        }
+        
+        th,
+        td {
+            padding: 10px 12px;
+            border: 1px solid #ddd;
+            text-align: center;
+        }
+        
+        th {
+            background: #2980b9;
+            color: white;
+        }
+        
+        tr:nth-child(even) {
+            background: #f9f9f9;
+        }
+        
+        .highlight {
+            font-size: 17px;
+            font-weight: bold;
+            color: #1abc9c;
+            margin-top: 12px;
+        }
+        
+        .present {
+            color: green;
+            font-weight: bold;
+        }
+        
+        .absent {
+            color: red;
+            font-weight: bold;
+        }
+        
+        .empty {
+            color: #aaa;
+            padding: 15px;
+        }
+        
+        .err-msg {
+            color: red;
+            font-size: 13px;
+            margin-top: 6px;
+            display: none;
+        }
+        
+        #loginBox {
+            max-width: 400px;
+            margin: 60px auto;
+        }
+        
+        .profile-row {
+            display: flex;
+            justify-content: space-around;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 5px;
+        }
+        
+        .profile-item {
+            font-size: 14px;
+        }
+        
+        .profile-item b {
+            color: #2980b9;
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- TOP BAR -->
+    <div class="topbar" id="topbar" style="display:none">
+        <h2>👨‍🎓 Student Dashboard</h2>
+        <button class="logout" onclick="logout()">⬅ Back to Home</button>
+    </div>
+
+    <!-- LOGIN -->
+    <div class="container">
+        <div class="card" id="loginBox">
+            <h3>🔐 Student Login</h3>
+            <input type="text" id="sRoll" placeholder="Enter Roll Number">
+            <input type="password" id="sPass" placeholder="Enter Password" onkeydown="if(event.key==='Enter') doLogin()">
+            <button class="btn" onclick="doLogin()">Login</button>
+            <p class="err-msg" id="loginErr">Wrong roll number or password!</p>
+        </div>
+    </div>
+
+    <!-- DASHBOARD -->
+    <div class="container" id="dashboard" style="display:none">
+
+        <!-- PROFILE -->
+        <div class="card">
+            <h3>👤 My Profile</h3>
+            <div class="profile-row">
+                <div class="profile-item"><b>Name:</b> <span id="pName"></span></div>
+                <div class="profile-item"><b>Roll No:</b> <span id="pRoll"></span></div>
+                <div class="profile-item"><b>Department:</b> <span id="pDept"></span></div>
+                <div class="profile-item"><b>Today:</b> <span id="pToday"></span></div>
+                <div class="profile-item"><b>Teacher:</b> <span id="pTeacher"></span></div>
+            </div>
+        </div>
+
+        <!-- TODAY SCHEDULE -->
+        <div class="card">
+            <h3>📅 Today's Class</h3>
+            <table id="todayTable"></table>
+            <p class="highlight" id="todayMsg"></p>
+        </div>
+
+        <!-- FULL WEEK -->
+        <div class="card">
+            <h3>📆 Full Weekly Schedule</h3>
+            <table id="weekTable"></table>
+        </div>
+
+        <!-- MY ATTENDANCE -->
+        <div class="card">
+            <h3>✅ My Attendance</h3>
+            <table id="attTable"></table>
+        </div>
+
+    </div>
+
+    <script>
+        let student = null;
+        const DAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+
+        // ── LOGIN ──
+        async function doLogin() {
+            let roll_no = document.getElementById("sRoll").value.trim().toUpperCase();
+            let password = document.getElementById("sPass").value;
+            if (!roll_no || !password) return alert("Enter roll number and password");
+
+            let r = await fetch("/api/students/login", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    roll_no,
+                    password
+                })
+            });
+            let data = await r.json();
+            if (!r.ok) {
+                document.getElementById("loginErr").style.display = "block";
+                return;
+            }
+            student = data.student;
+            sessionStorage.setItem("student", JSON.stringify(student));
+            loadDashboard();
+        }
+
+        // ── LOGOUT — goes back to home ──
+        function logout() {
+            sessionStorage.removeItem("student");
+            location.href = "/"; // <-- back to home page
+        }
+
+        // ── DASHBOARD ──
+        async function loadDashboard() {
+            document.getElementById("loginBox").style.display = "none";
+            document.getElementById("dashboard").style.display = "block";
+            document.getElementById("topbar").style.display = "flex";
+            document.getElementById("loginErr").style.display = "none";
+
+            let todayName = DAYS[new Date().getDay()];
+            document.getElementById("pName").innerText = student.name;
+            document.getElementById("pRoll").innerText = student.roll_no;
+            document.getElementById("pDept").innerText = student.department || "Computer Engineering";
+            document.getElementById("pToday").innerText = todayName;
+
+            await loadToday(todayName);
+            await loadWeek();
+            await loadMyAtt();
+        }
+
+        async function loadToday(todayName) {
+            let r = await fetch("/api/schedule?day=" + todayName);
+            let schedule = await r.json();
+            let mr = await fetch("/api/mentors");
+            let mentors = await mr.json();
+
+            let t = document.getElementById("todayTable");
+            let msg = document.getElementById("todayMsg");
+
+            t.innerHTML = `<tr><th>Day</th><th>Subject</th><th>Time</th><th>Teacher</th></tr>`;
+
+            if (schedule.length) {
+                let item = schedule[0];
+                let teacher = mentors.find(m => m.subject === item.subject);
+                let tName = teacher ? teacher.name : "Not Assigned";
+
+                document.getElementById("pTeacher").innerText = tName;
+
+                let tr = t.insertRow();
+                tr.insertCell(0).innerText = item.day;
+                tr.insertCell(1).innerText = item.subject;
+                tr.insertCell(2).innerText = item.time;
+                tr.insertCell(3).innerText = tName;
+
+                msg.innerText = item.subject === "Holiday" ? "🎉 Enjoy your holiday!" : "📖 Be ready for your class!";
+            } else {
+                t.innerHTML += `<tr><td colspan="4" class="empty">No class today</td></tr>`;
+                msg.innerText = "";
+                document.getElementById("pTeacher").innerText = "-";
+            }
+        }
+
+        async function loadWeek() {
+            let r = await fetch("/api/schedule");
+            let schedule = await r.json();
+            let mr = await fetch("/api/mentors");
+            let mentors = await mr.json();
+
+            let t = document.getElementById("weekTable");
+            t.innerHTML = `<tr><th>Day</th><th>Subject</th><th>Time</th><th>Teacher</th></tr>`;
+
+            schedule.forEach(item => {
+                let teacher = mentors.find(m => m.subject === item.subject);
+                let tr = t.insertRow();
+                tr.insertCell(0).innerText = item.day;
+                tr.insertCell(1).innerText = item.subject;
+                tr.insertCell(2).innerText = item.time;
+                tr.insertCell(3).innerText = teacher ? teacher.name : "Not Assigned";
+            });
+        }
+
+        async function loadMyAtt() {
+            // Get attendance by roll_no match
+            let r = await fetch("/api/attendance");
+            let data = await r.json();
+
+            // Filter by roll_no
+            let mine = data.filter(a => a.roll_no === student.roll_no);
+            let t = document.getElementById("attTable");
+
+            t.innerHTML = `<tr><th>Subject</th><th>Date</th><th>Status</th></tr>`;
+
+            if (!mine.length) {
+                t.innerHTML += `<tr><td colspan="3" class="empty">No attendance records yet</td></tr>`;
+                return;
+            }
+            mine.forEach(a => {
+                let tr = t.insertRow();
+                tr.insertCell(0).innerText = a.subject;
+                tr.insertCell(1).innerText = a.date;
+                let sc = tr.insertCell(2);
+                sc.innerText = a.status;
+                sc.className = a.status;
+            });
+        }
+
+        // Auto-login from session
+        window.onload = function() {
+            let saved = sessionStorage.getItem("student");
+            if (saved) {
+                student = JSON.parse(saved);
+                loadDashboard();
+            }
+        };
+
+        // Auto refresh every 10s
+        setInterval(function() {
+            if (student) {
+                loadToday(DAYS[new Date().getDay()]);
+                loadMyAtt();
+            }
+        }, 10000);
+    </script>
+</body>
+
+</html>

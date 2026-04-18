@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <title>College Attendance System - Admin</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: Arial, sans-serif;
+            background: #eef2f7;
+        }
+        
+        .topbar {
+            background: #2c3e50;
+            color: white;
+            padding: 14px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .topbar h2 {
+            font-size: 20px;
+            font-family: Georgia, serif;
+            letter-spacing: 1px;
+        }
+        
+        .logout {
+            background: #e74c3c;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 13px;
+        }
+        
+        .container {
+            max-width: 950px;
+            margin: 20px auto;
+            padding: 0 15px;
+        }
+        
+        .card {
+            background: white;
+            padding: 20px;
+            margin-bottom: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+        
+        .card h3 {
+            font-size: 16px;
+            color: #2c3e50;
+            border-bottom: 2px solid #eee;
+            padding-bottom: 10px;
+            margin-bottom: 15px;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        th,
+        td {
+            padding: 10px 12px;
+            border: 1px solid #ddd;
+            text-align: center;
+            font-size: 13px;
+        }
+        
+        th {
+            background: #2c3e50;
+            color: white;
+        }
+        
+        tr:nth-child(even) {
+            background: #f9f9f9;
+        }
+        
+        .form-row {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        
+        .form-row input,
+        .form-row select {
+            flex: 1;
+            min-width: 140px;
+            padding: 9px 10px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 13px;
+        }
+        
+        .form-row input:focus,
+        .form-row select:focus {
+            outline: none;
+            border-color: #2c3e50;
+        }
+        
+        .btn-add {
+            background: #1abc9c;
+            color: white;
+            border: none;
+            padding: 9px 18px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 13px;
+            white-space: nowrap;
+        }
+        
+        .btn-edit {
+            background: #2980b9;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        
+        .btn-save {
+            background: #27ae60;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        
+        .btn-del {
+            background: #e74c3c;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        
+        .filter-row {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 14px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        
+        .filter-row select,
+        .filter-row input {
+            padding: 8px 10px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 13px;
+        }
+        
+        .present {
+            color: green;
+            font-weight: bold;
+        }
+        
+        .absent {
+            color: red;
+            font-weight: bold;
+        }
+        
+        .empty {
+            text-align: center;
+            color: #aaa;
+            padding: 18px;
+            font-size: 13px;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="topbar">
+        <h2>🎓 Department Admin Dashboard</h2>
+        <button class="logout" onclick="logout()">⬅ Logout</button>
+    </div>
+
+    <div class="container">
+        <div class="card">
+            <h3>🏫 Department Access</h3>
+            <p><b>Department:</b> <span id="deptName">-</span></p>
+            <p style="margin-top:6px;color:#666;font-size:13px">
+
+            </p>
+        </div>
+
+        <!-- SCHEDULE -->
+        <div class="card">
+            <h3>📅 Weekly Class Schedule</h3>
+            <table id="scheduleTable"></table>
+        </div>
+
+        <!-- ADD MENTOR -->
+        <div class="card">
+            <h3>🧑‍🏫 Add Mentor</h3>
+            <div class="form-row">
+                <input type="text" id="mName" placeholder="Mentor Name">
+                <select id="mDept">
+                    <option value="Computer Engineering">Computer Engineering</option>
+                </select>
+                <input type="text" id="mSubject" placeholder="Subject">
+                <input type="password" id="mPass" placeholder="Password">
+                <button class="btn-add" onclick="addMentor()">Add Mentor</button>
+            </div>
+        </div>
+
+        <!-- MENTOR LIST -->
+        <div class="card">
+            <h3>👥 Mentor List</h3>
+            <table id="mentorTable"></table>
+        </div>
+
+        <!-- ADD STUDENT -->
+        <div class="card">
+            <h3>👨‍🎓 Add Student</h3>
+            <div class="form-row">
+                <input type="text" id="sName" placeholder="Student Name">
+                <input type="text" id="sRoll" placeholder="Roll Number">
+                <select id="sDept">
+                    <option value="Computer Engineering">Computer Engineering</option>
+                </select>
+                <input type="password" id="sPass" placeholder="Password">
+                <button class="btn-add" onclick="addStudent()">Add Student</button>
+            </div>
+        </div>
+
+        <!-- STUDENT LIST -->
+        <div class="card">
+            <h3>👥 Student List</h3>
+            <table id="studentTable"></table>
+        </div>
+
+        <!-- ATTENDANCE -->
+        <div class="card">
+            <h3>✅ Attendance Records</h3>
+            <div class="filter-row">
+                <label>Subject:
+                <select id="filterSub" onchange="loadAtt()">
+                    <option value="">All</option>
+                </select>
+            </label>
+                <label>Date:
+                <input type="date" id="filterDate" onchange="loadAtt()">
+            </label>
+            </div>
+            <table id="attTable"></table>
+        </div>
+
+    </div>
+
+    <script>
+        const savedAdmin = sessionStorage.getItem("admin");
+        if (!savedAdmin) {
+            location.href = "/";
+        }
+        const admin = JSON.parse(savedAdmin);
+        document.getElementById("deptName").innerText = admin.department || "Computer Engineering";
+
+        function logout() {
+            sessionStorage.removeItem("admin");
+            location.href = "/";
+        }
+
+        async function api(method, url, body) {
+            let opt = {
+                method,
+                headers: {
+                    "Content-Type": "application/json"
+                }
+            };
+            if (body) opt.body = JSON.stringify(body);
+            let r = await fetch(url, opt);
+            return r.json();
+        }
+
+        function emptyRow(cols, msg) {
+            return `<tr><td colspan="${cols}" class="empty">${msg}</td></tr>`;
+        }
+
+        // ── SCHEDULE ──
+        async function loadSchedule() {
+            let data = await api("GET", "/api/schedule");
+            let t = document.getElementById("scheduleTable");
+            t.innerHTML = `<tr><th>Day</th><th>Subject</th><th>Time</th><th>Action</th></tr>`;
+
+            // Fill subject filter
+            let sel = document.getElementById("filterSub");
+            let subs = [...new Set(data.map(d => d.subject).filter(s => s !== "Holiday"))];
+            sel.innerHTML = `<option value="">All</option>` + subs.map(s => `<option>${s}</option>`).join("");
+
+            data.forEach(row => {
+                let tr = t.insertRow();
+                tr.insertCell(0).innerText = row.day;
+                tr.insertCell(1).innerHTML = `<span id="sub${row.id}">${row.subject}</span>`;
+                tr.insertCell(2).innerHTML = `<span id="tim${row.id}">${row.time}</span>`;
+                tr.insertCell(3).innerHTML = `<button class="btn-edit" onclick="editRow(${row.id})">Edit</button>`;
+            });
+        }
+
+        function editRow(id) {
+            let sub = document.getElementById("sub" + id);
+            let tim = document.getElementById("tim" + id);
+            sub.innerHTML = `<input id="is${id}" value="${sub.innerText}" style="width:90%;padding:4px">`;
+            tim.innerHTML = `<input id="it${id}" value="${tim.innerText}" style="width:90%;padding:4px">`;
+            event.target.innerText = "Save";
+            event.target.className = "btn-save";
+            event.target.onclick = function() {
+                saveRow(id);
+            };
+        }
+
+        async function saveRow(id) {
+            let subject = document.getElementById("is" + id).value.trim();
+            let time = document.getElementById("it" + id).value.trim();
+            if (!subject || !time) return alert("Cannot be empty");
+            let r = await api("POST", "/api/schedule", {
+                id,
+                subject,
+                time
+            });
+            if (r.error) return alert(r.error);
+            loadSchedule();
+        }
+
+        // ── MENTORS ──
+        async function loadMentors() {
+            let data = await api("GET", "/api/mentors");
+            let t = document.getElementById("mentorTable");
+            t.innerHTML = `<tr><th>Name</th><th>Department</th><th>Subject</th><th>Action</th></tr>`;
+            if (!data.length) {
+                t.innerHTML += emptyRow(4, "No mentors yet");
+                return;
+            }
+            data.forEach(m => {
+                let tr = t.insertRow();
+                tr.insertCell(0).innerText = m.name;
+                tr.insertCell(1).innerText = m.department || "Computer Engineering";
+                tr.insertCell(2).innerText = m.subject;
+                tr.insertCell(3).innerHTML = `<button class="btn-del" onclick="delMentor(${m.id})">Delete</button>`;
+            });
+        }
+
+        async function addMentor() {
+            let name = document.getElementById("mName").value.trim();
+            let department = document.getElementById("mDept").value.trim();
+            let subject = document.getElementById("mSubject").value.trim();
+            let pass = document.getElementById("mPass").value.trim();
+            if (!name || !department || !subject || !pass) return alert("Fill all fields");
+            let r = await api("POST", "/api/mentors", {
+                name,
+                department,
+                subject,
+                password: pass
+            });
+            if (r.error) return alert(r.error);
+            ["mName", "mSubject", "mPass"].forEach(id => document.getElementById(id).value = "");
+            document.getElementById("mDept").value = "Computer Engineering";
+            loadMentors();
+        }
+
+        async function delMentor(id) {
+            if (!confirm("Delete mentor?")) return;
+            await api("DELETE", "/api/mentors/" + id);
+            loadMentors();
+        }
+
+        // ── STUDENTS ──
+        async function loadStudents() {
+            let data = await api("GET", "/api/students");
+            let t = document.getElementById("studentTable");
+            t.innerHTML = `<tr><th>Name</th><th>Roll No</th><th>Department</th><th>Action</th></tr>`;
+            if (!data.length) {
+                t.innerHTML += emptyRow(4, "No students yet");
+                return;
+            }
+            data.forEach(s => {
+                let tr = t.insertRow();
+                tr.insertCell(0).innerText = s.name;
+                tr.insertCell(1).innerText = s.roll_no;
+                tr.insertCell(2).innerText = s.department || "Computer Engineering";
+                tr.insertCell(3).innerHTML = `<button class="btn-del" onclick="delStudent(${s.id})">Delete</button>`;
+            });
+        }
+
+        async function addStudent() {
+            let name = document.getElementById("sName").value.trim();
+            let roll_no = document.getElementById("sRoll").value.trim().toUpperCase();
+            let department = document.getElementById("sDept").value.trim();
+            let pass = document.getElementById("sPass").value.trim();
+            if (!name || !roll_no || !department || !pass) return alert("Fill all fields");
+            if (roll_no.length < 3) return alert("Roll number should be at least 3 characters");
+            let r = await api("POST", "/api/students", {
+                name,
+                roll_no,
+                department,
+                password: pass
+            });
+            if (r.error) return alert(r.error);
+            ["sName", "sRoll", "sPass"].forEach(id => document.getElementById(id).value = "");
+            document.getElementById("sDept").value = "Computer Engineering";
+            loadStudents();
+        }
+
+        async function delStudent(id) {
+            if (!confirm("Delete student?")) return;
+            await api("DELETE", "/api/students/" + id);
+            loadStudents();
+        }
+
+        // ── ATTENDANCE ──
+        async function loadAtt() {
+            let sub = document.getElementById("filterSub").value;
+            let date = document.getElementById("filterDate").value;
+            let url = "/api/attendance";
+            let p = [];
+            if (sub) p.push("subject=" + encodeURIComponent(sub));
+            if (date) p.push("date=" + date);
+            if (p.length) url += "?" + p.join("&");
+
+            let data = await api("GET", url);
+            let t = document.getElementById("attTable");
+            t.innerHTML = `<tr><th>Student</th><th>Roll No</th><th>Subject</th><th>Date</th><th>Status</th></tr>`;
+            if (!data.length) {
+                t.innerHTML += emptyRow(5, "No records found");
+                return;
+            }
+            data.forEach(a => {
+                let tr = t.insertRow();
+                tr.insertCell(0).innerText = a.student;
+                tr.insertCell(1).innerText = a.roll_no || "-";
+                tr.insertCell(2).innerText = a.subject;
+                tr.insertCell(3).innerText = a.date;
+                let sc = tr.insertCell(4);
+                sc.innerText = a.status;
+                sc.className = a.status;
+            });
+        }
+
+        loadSchedule();
+        loadMentors();
+        loadStudents();
+        loadAtt();
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,548 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <title>College Attendance System - Mentor</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: Arial, sans-serif;
+            background: #e8f8f5;
+        }
+        
+        .topbar {
+            background: #27ae60;
+            color: white;
+            padding: 14px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .topbar h2 {
+            font-size: 20px;
+            font-family: Georgia, serif;
+            letter-spacing: 1px;
+        }
+        
+        .logout {
+            background: #e74c3c;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+        
+        .container {
+            max-width: 750px;
+            margin: 20px auto;
+            padding: 0 15px;
+        }
+        
+        .card {
+            background: white;
+            padding: 20px;
+            margin-bottom: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+        
+        .card h3 {
+            font-size: 16px;
+            color: #2c3e50;
+            border-bottom: 2px solid #eee;
+            padding-bottom: 10px;
+            margin-bottom: 15px;
+        }
+        
+        input[type=text],
+        select,
+        input[type=password] {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid #ddd;
+            border-radius: 7px;
+            font-size: 14px;
+            margin-bottom: 10px;
+        }
+        
+        input:focus,
+        select:focus {
+            outline: none;
+            border-color: #27ae60;
+        }
+        
+        .btn {
+            width: 100%;
+            padding: 11px;
+            border: none;
+            border-radius: 7px;
+            font-size: 14px;
+            font-weight: bold;
+            color: white;
+            cursor: pointer;
+            margin-top: 4px;
+        }
+        
+        .btn-green {
+            background: #27ae60;
+        }
+        
+        .btn-blue {
+            background: #3498db;
+        }
+        
+        .btn-red {
+            background: #e74c3c;
+        }
+        
+        .btn-teal {
+            background: #1abc9c;
+        }
+        
+        .btn-toggle {
+            width: auto;
+            padding: 9px 18px;
+            margin-right: 8px;
+            margin-bottom: 10px;
+        }
+        
+        .class-box {
+            background: #1abc9c;
+            color: white;
+            padding: 14px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+        }
+        
+        .class-box b {
+            font-size: 15px;
+        }
+        /* Attendance */
+        
+        .stu-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 9px 0;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .stu-row:last-child {
+            border-bottom: none;
+        }
+        
+        .stu-row span {
+            font-size: 14px;
+            color: #333;
+        }
+        
+        .att-group {
+            display: flex;
+            gap: 8px;
+        }
+        
+        .att-btn {
+            padding: 6px 16px;
+            border: 2px solid #ddd;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: bold;
+            background: white;
+        }
+        
+        .att-btn.present {
+            border-color: #27ae60;
+            color: #27ae60;
+        }
+        
+        .att-btn.absent {
+            border-color: #e74c3c;
+            color: #e74c3c;
+        }
+        
+        .att-btn.present.marked {
+            background: #27ae60;
+            color: white;
+        }
+        
+        .att-btn.absent.marked {
+            background: #e74c3c;
+            color: white;
+        }
+        
+        .sub-btn {
+            width: 100%;
+            padding: 11px;
+            background: #1abc9c;
+            color: white;
+            border: none;
+            border-radius: 7px;
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+            margin-top: 14px;
+        }
+        /* History table */
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+        }
+        
+        th,
+        td {
+            padding: 9px 11px;
+            border: 1px solid #ddd;
+            text-align: center;
+        }
+        
+        th {
+            background: #27ae60;
+            color: white;
+        }
+        
+        tr:nth-child(even) {
+            background: #f9f9f9;
+        }
+        
+        .present {
+            color: green;
+            font-weight: bold;
+        }
+        
+        .absent {
+            color: red;
+            font-weight: bold;
+        }
+        
+        .empty {
+            text-align: center;
+            color: #aaa;
+            padding: 15px;
+        }
+        
+        #loginBox {
+            max-width: 400px;
+            margin: 60px auto;
+        }
+        
+        .err-msg {
+            color: red;
+            font-size: 13px;
+            margin-top: 6px;
+            display: none;
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- TOP BAR (hidden until login) -->
+    <div class="topbar" id="topbar" style="display:none">
+        <h2>🧑‍🏫 Mentor Dashboard</h2>
+        <button class="logout" onclick="logout()">⬅ Back to Home</button>
+    </div>
+
+    <!-- LOGIN BOX -->
+    <div class="container">
+        <div class="card" id="loginBox">
+            <h3>🔐 Mentor Login</h3>
+            <select id="mDept">
+                <option value="Computer Engineering">Computer Engineering</option>
+            </select>
+            <input type="text" id="mName" placeholder="Enter Your Name">
+            <input type="password" id="mPass" placeholder="Enter Your Password">
+            <button class="btn btn-green" onclick="doLogin()">Login</button>
+            <p class="err-msg" id="loginErr">Wrong name or password!</p>
+        </div>
+    </div>
+
+    <!-- DASHBOARD -->
+    <div class="container" id="dashboard" style="display:none">
+
+        <!-- PROFILE -->
+        <div class="card">
+            <h3>👤 My Profile</h3>
+            <p><b>Name:</b> <span id="pName"></span></p>
+            <p style="margin-top:6px"><b>Department:</b> <span id="pDept"></span></p>
+            <p style="margin-top:6px"><b>Subject:</b> <span id="pSubject"></span></p>
+        </div>
+
+        <!-- VIEW CLASSES -->
+        <div class="card">
+            <h3>📅 My Classes</h3>
+            <button class="btn btn-blue btn-toggle" onclick="showToday()">Today</button>
+            <button class="btn btn-teal btn-toggle" onclick="showWeekly()">Full Week</button>
+            <h4 id="viewTitle" style="margin-bottom:10px;color:#555"></h4>
+            <div id="classBox"></div>
+        </div>
+
+        <!-- MARK ATTENDANCE (today only) -->
+        <div class="card">
+            <h3>Mark Attendance - Today (<span id="todayDateTxt"></span>)</h3>
+            <div id="attArea">
+                <p style="color:#aaa">Loading students...</p>
+            </div>
+            <button class="sub-btn" onclick="submitAtt()">Submit Attendance</button>
+        </div>
+
+        <!-- HISTORY -->
+        <div class="card">
+            <h3>📋 Attendance History</h3>
+            <table id="histTable">
+                <tr>
+                    <th>Student</th>
+                    <th>Roll No</th>
+                    <th>Date</th>
+                    <th>Status</th>
+                </tr>
+            </table>
+        </div>
+
+    </div>
+
+    <script>
+        let mentor = null;
+        let attMap = {}; // roll_no -> {name, status}
+        let allSch = [];
+
+        const DAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+
+        // ── LOGIN ──
+        async function doLogin() {
+            let department = document.getElementById("mDept").value.trim();
+            let name = document.getElementById("mName").value.trim();
+            let pass = document.getElementById("mPass").value;
+            let r = await fetch("/api/mentors/login", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    department,
+                    name,
+                    password: pass
+                })
+            });
+            let data = await r.json();
+            if (!r.ok) {
+                document.getElementById("loginErr").style.display = "block";
+                return;
+            }
+            mentor = data.mentor;
+            sessionStorage.setItem("mentor", JSON.stringify(mentor));
+            loadDashboard();
+        }
+
+        // ── LOGOUT — go back to home page ──
+        function logout() {
+            sessionStorage.removeItem("mentor");
+            location.href = "/"; // <-- goes back to home, not just reload
+        }
+
+        // ── LOAD DASHBOARD ──
+        async function loadDashboard() {
+            document.getElementById("loginBox").style.display = "none";
+            document.getElementById("dashboard").style.display = "block";
+            document.getElementById("topbar").style.display = "flex";
+            document.getElementById("loginErr").style.display = "none";
+
+            document.getElementById("pName").innerText = mentor.name;
+            document.getElementById("pDept").innerText = mentor.department || "Computer Engineering";
+            document.getElementById("pSubject").innerText = mentor.subject;
+
+            let today = new Date().toISOString().split("T")[0];
+            document.getElementById("todayDateTxt").innerText = today;
+
+            // Load schedule
+            let r = await fetch("/api/schedule");
+            allSch = await r.json();
+
+            showToday();
+            await loadAttArea();
+            await loadHistory();
+        }
+
+        // ── TODAY VIEW ──
+        function showToday() {
+            let todayName = DAYS[new Date().getDay()];
+            document.getElementById("viewTitle").innerText = "Today — " + todayName;
+            let list = allSch.filter(s => s.day === todayName && s.subject === mentor.subject);
+            let box = document.getElementById("classBox");
+            box.innerHTML = list.length ?
+                list.map(c => `<div class="class-box"><b>${c.subject}</b><br>Day: ${c.day} &nbsp; Time: ${c.time}</div>`).join("") :
+                "<p style='color:#aaa'>No class today for your subject.</p>";
+        }
+
+        // ── WEEKLY VIEW ──
+        function showWeekly() {
+            document.getElementById("viewTitle").innerText = "Full Week";
+            let list = allSch.filter(s => s.subject === mentor.subject);
+            let box = document.getElementById("classBox");
+            box.innerHTML = list.length ?
+                list.map(c => `<div class="class-box"><b>${c.subject}</b><br>Day: ${c.day} &nbsp; Time: ${c.time}</div>`).join("") :
+                "<p style='color:#aaa'>No classes assigned.</p>";
+        }
+
+        // ── ATTENDANCE AREA (load students from DB) ──
+        async function loadAttArea() {
+            let todayName = DAYS[new Date().getDay()];
+            let area = document.getElementById("attArea");
+            try {
+
+                // Check if mentor has a class today
+                let todayClass = allSch.find(s => s.day === todayName && s.subject === mentor.subject);
+
+                if (!todayClass) {
+                    area.innerHTML = "<p style='color:#aaa'>No class today - no attendance needed.</p>";
+                    return;
+                }
+
+                // Load students from DB
+                let r = await fetch("/api/students");
+                let students = await r.json();
+                if (!Array.isArray(students)) {
+                    area.innerHTML = "<p style='color:#e74c3c'>Could not load students. Please refresh or restart the server.</p>";
+                    return;
+                }
+                students = students.filter(s => (s.department || "Computer Engineering") === (mentor.department || "Computer Engineering"));
+
+                if (!students.length) {
+                    area.innerHTML = "<p style='color:#aaa'>No students added yet. Ask admin to add students.</p>";
+                    return;
+                }
+
+                // Load existing attendance for today
+                let today = new Date().toISOString().split("T")[0];
+                let ar = await fetch("/api/attendance?subject=" + encodeURIComponent(mentor.subject));
+                let existing = await ar.json();
+                let todayAtt = {};
+                existing.filter(a => a.date === today).forEach(a => {
+                    todayAtt[a.roll_no] = a.status;
+                });
+
+                // Restore attMap
+                attMap = {};
+                students.forEach(s => {
+                    if (todayAtt[s.roll_no]) attMap[s.roll_no] = {
+                        name: s.name,
+                        status: todayAtt[s.roll_no]
+                    };
+                });
+
+                area.innerHTML = students.map(s => {
+                    let cur = attMap[s.roll_no] ? attMap[s.roll_no].status : "";
+                    return `
+            <div class="stu-row">
+                <span>👤 ${s.name} <small style="color:#888">(${s.roll_no})</small></span>
+                <div class="att-group">
+                    <button class="att-btn present ${cur==='present'?'marked':''}"
+                        id="P-${s.roll_no}" data-roll="${s.roll_no}" data-name="${encodeURIComponent(s.name)}" data-status="present">✓ Present</button>
+                    <button class="att-btn absent ${cur==='absent'?'marked':''}"
+                        id="A-${s.roll_no}" data-roll="${s.roll_no}" data-name="${encodeURIComponent(s.name)}" data-status="absent">✕ Absent</button>
+                </div>
+            </div>`;
+                }).join("");
+                document.querySelectorAll(".att-btn").forEach(btn => {
+                    btn.onclick = function() {
+                        const roll = this.dataset.roll;
+                        const name = decodeURIComponent(this.dataset.name || "");
+                        const status = this.dataset.status;
+                        setAtt(roll, name, status);
+                    };
+                });
+            } catch (e) {
+                area.innerHTML = "<p style='color:#e74c3c'>Error loading students. Please refresh this page.</p>";
+            }
+        }
+
+        function setAtt(roll, name, status) {
+            attMap[roll] = {
+                name,
+                status
+            };
+            document.getElementById("P-" + roll).classList.toggle("marked", status === "present");
+            document.getElementById("A-" + roll).classList.toggle("marked", status === "absent");
+        }
+
+        async function submitAtt() {
+            if (!Object.keys(attMap).length) return alert("Mark attendance first!");
+            let today = new Date().toISOString().split("T")[0];
+            let subject = mentor.subject;
+            const btn = document.querySelector(".sub-btn");
+            btn.disabled = true;
+            btn.innerText = "Submitting...";
+
+            try {
+                for (let [roll_no, info] of Object.entries(attMap)) {
+                    const r = await fetch("/api/attendance", {
+                        method: "POST",
+                        headers: {
+                            "Content-Type": "application/json"
+                        },
+                        body: JSON.stringify({
+                            student: info.name,
+                            roll_no,
+                            subject,
+                            status: info.status,
+                            date: today
+                        })
+                    });
+                    const data = await r.json();
+                    if (!r.ok || data.error) {
+                        throw new Error(data.error || "Failed to submit attendance");
+                    }
+                }
+                alert("Attendance submitted!");
+                await loadHistory();
+            } catch (e) {
+                alert("Submit failed: " + (e.message || "Server error"));
+            } finally {
+                btn.disabled = false;
+                btn.innerText = "Submit Attendance";
+            }
+        }
+
+        // ── HISTORY ──
+        async function loadHistory() {
+            let r = await fetch("/api/attendance?subject=" + encodeURIComponent(mentor.subject));
+            let data = await r.json();
+            let t = document.getElementById("histTable");
+            t.innerHTML = `<tr><th>Student</th><th>Roll No</th><th>Date</th><th>Status</th></tr>`;
+            if (!data.length) {
+                t.innerHTML += `<tr><td colspan="4" class="empty">No records yet</td></tr>`;
+                return;
+            }
+            data.forEach(a => {
+                let tr = t.insertRow();
+                tr.insertCell(0).innerText = a.student;
+                tr.insertCell(1).innerText = a.roll_no || "-";
+                tr.insertCell(2).innerText = a.date;
+                let sc = tr.insertCell(3);
+                sc.innerText = a.status;
+                sc.className = a.status;
+            });
+        }
+
+        // Auto-login from session
+        window.onload = function() {
+            let saved = sessionStorage.getItem("mentor");
+            if (saved) {
+                mentor = JSON.parse(saved);
+                loadDashboard();
+            }
+        };
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <title>College Attendance System</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: Arial, sans-serif;
+            background: #eef2f7;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .box {
+            background: white;
+            padding: 40px 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.12);
+            width: 100%;
+            max-width: 420px;
+            text-align: center;
+        }
+        
+        .icon {
+            font-size: 50px;
+            margin-bottom: 10px;
+        }
+        
+        h2 {
+            font-size: 24px;
+            color: #2c3e50;
+            margin-bottom: 6px;
+            font-family: Georgia, serif;
+            font-weight: bold;
+            letter-spacing: 1px;
+        }
+        
+        .subtitle {
+            color: #888;
+            font-size: 13px;
+            margin-bottom: 30px;
+        }
+        
+        .warn {
+            background: #fdecea;
+            border-left: 4px solid #e74c3c;
+            border-radius: 6px;
+            padding: 12px;
+            margin-bottom: 20px;
+            font-size: 13px;
+            color: #c0392b;
+            text-align: left;
+            display: none;
+        }
+        
+        .role-btn {
+            display: block;
+            width: 100%;
+            padding: 16px;
+            margin-bottom: 14px;
+            border: none;
+            border-radius: 10px;
+            font-size: 17px;
+            font-weight: bold;
+            color: white;
+            cursor: pointer;
+            transition: opacity 0.2s;
+        }
+        
+        .role-btn:hover {
+            opacity: 0.88;
+        }
+        
+        .btn-admin {
+            background: #2c3e50;
+        }
+        
+        .btn-mentor {
+            background: #27ae60;
+        }
+        
+        .btn-student {
+            background: #2980b9;
+        }
+        
+        .overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.45);
+            justify-content: center;
+            align-items: center;
+            z-index: 99;
+        }
+        
+        .popup {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            width: 320px;
+            text-align: center;
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.2);
+        }
+        
+        .popup h3 {
+            margin-bottom: 15px;
+            color: #2c3e50;
+        }
+        
+        .popup input,
+        .popup select {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid #ddd;
+            border-radius: 7px;
+            font-size: 14px;
+            margin-bottom: 12px;
+        }
+        
+        .popup input:focus,
+        .popup select:focus {
+            outline: none;
+            border-color: #2c3e50;
+        }
+        
+        .popup-btn {
+            width: 100%;
+            padding: 11px;
+            border: none;
+            border-radius: 7px;
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+            color: white;
+            margin-bottom: 8px;
+        }
+        
+        .btn-go {
+            background: #2c3e50;
+        }
+        
+        .btn-cancel {
+            background: #aaa;
+        }
+        
+        .err-txt {
+            color: #e74c3c;
+            font-size: 13px;
+            margin-top: 4px;
+            display: none;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="box">
+        <div class="icon">🎓</div>
+        <h2>Remedial Class System</h2>
+        <p class="subtitle">Mini Project &nbsp;|&nbsp; Select your role</p>
+        <div class="warn" id="warn">
+            ⚠️ <b>Server not running!</b><br> Open VS Code Terminal → type <b>python server.py</b> → Enter<br> Then open: <b>http://localhost:8080</b>
+        </div>
+        <button class="role-btn btn-admin" onclick="openAdmin()">👨‍💼 &nbsp; Admin</button>
+        <button class="role-btn btn-mentor" onclick="location.href='/mentor.html'">🧑‍🏫 &nbsp; Mentor</button>
+        <button class="role-btn btn-student" onclick="location.href='/student.html'">👨‍🎓 &nbsp; Student</button>
+    </div>
+
+    <!-- Admin Password Popup -->
+    <div class="overlay" id="adminOverlay">
+        <div class="popup">
+            <h3>🔒 Admin Login</h3>
+            <select id="adminDept">
+                <option value="Computer Engineering">Computer Engineering</option>
+            </select>
+            <input type="text" id="adminUser" placeholder="Enter Admin Username" onkeydown="if(event.key==='Enter') checkAdmin()">
+            <input type="password" id="adminPw" placeholder="Enter Admin Password" onkeydown="if(event.key==='Enter') checkAdmin()">
+            <p class="err-txt" id="adminErr">Wrong details! Default: dept Computer Engineering, user ce_admin, pass admin123</p>
+            <button class="popup-btn btn-go" onclick="checkAdmin()">Enter</button>
+            <button class="popup-btn btn-cancel" onclick="closeAdmin()">Cancel</button>
+        </div>
+    </div>
+
+    <script>
+        window.onload = async function() {
+            try {
+                await fetch("/api/schedule");
+            } catch (e) {
+                document.getElementById("warn").style.display = "block";
+            }
+        };
+
+        function openAdmin() {
+            document.getElementById("adminOverlay").style.display = "flex";
+            document.getElementById("adminDept").value = "Computer Engineering";
+            document.getElementById("adminUser").value = "";
+            document.getElementById("adminPw").value = "";
+            document.getElementById("adminErr").style.display = "none";
+            setTimeout(function() {
+                document.getElementById("adminUser").focus();
+            }, 100);
+        }
+
+        function closeAdmin() {
+            document.getElementById("adminOverlay").style.display = "none";
+        }
+
+        async function checkAdmin() {
+            const department = document.getElementById("adminDept").value;
+            const username = document.getElementById("adminUser").value.trim();
+            const password = document.getElementById("adminPw").value;
+            if (!department || !username || !password) {
+                document.getElementById("adminErr").style.display = "block";
+                return;
+            }
+            try {
+                const r = await fetch("/api/admin/login", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({
+                        department,
+                        username,
+                        password
+                    })
+                });
+                const data = await r.json();
+                if (!r.ok || data.error) {
+                    document.getElementById("adminErr").style.display = "block";
+                    return;
+                }
+                sessionStorage.setItem("admin", JSON.stringify(data.admin));
+                location.href = "/admin.html";
+            } catch (e) {
+                document.getElementById("adminErr").style.display = "block";
+            }
+        }
+    </script>
+</body>
+
+</html>
