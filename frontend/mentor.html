@@ -45,6 +45,36 @@
             margin: 20px auto;
             padding: 0 15px;
         }
+
+        .nav {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-bottom: 16px;
+        }
+
+        .nav button {
+            background: #d9efe4;
+            color: #1f5f3c;
+            border: none;
+            padding: 9px 14px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 13px;
+        }
+
+        .nav button.active {
+            background: #27ae60;
+            color: white;
+        }
+
+        .dash-section {
+            display: none;
+        }
+
+        .dash-section.active {
+            display: block;
+        }
         
         .card {
             background: white;
@@ -269,44 +299,59 @@
 
     <!-- DASHBOARD -->
     <div class="container" id="dashboard" style="display:none">
-
-        <!-- PROFILE -->
-        <div class="card">
-            <h3>👤 My Profile</h3>
-            <p><b>Name:</b> <span id="pName"></span></p>
-            <p style="margin-top:6px"><b>Department:</b> <span id="pDept"></span></p>
-            <p style="margin-top:6px"><b>Subject:</b> <span id="pSubject"></span></p>
+        <div class="nav" id="mentorNav">
+            <button class="active" onclick="showSection('profile', event)">Profile</button>
+            <button onclick="showSection('classes', event)">My Classes</button>
+            <button onclick="showSection('mark', event)">Mark Attendance</button>
+            <button onclick="showSection('history', event)">History</button>
         </div>
 
-        <!-- VIEW CLASSES -->
-        <div class="card">
-            <h3>📅 My Classes</h3>
-            <button class="btn btn-blue btn-toggle" onclick="showToday()">Today</button>
-            <button class="btn btn-teal btn-toggle" onclick="showWeekly()">Full Week</button>
-            <h4 id="viewTitle" style="margin-bottom:10px;color:#555"></h4>
-            <div id="classBox"></div>
-        </div>
-
-        <!-- MARK ATTENDANCE (today only) -->
-        <div class="card">
-            <h3>Mark Attendance - Today (<span id="todayDateTxt"></span>)</h3>
-            <div id="attArea">
-                <p style="color:#aaa">Loading students...</p>
+        <div id="section-profile" class="dash-section active">
+            <div class="card">
+                <h3>👤 My Profile</h3>
+                <p><b>Name:</b> <span id="pName"></span></p>
+                <p style="margin-top:6px"><b>Department:</b> <span id="pDept"></span></p>
+                <p style="margin-top:6px"><b>Subject:</b> <span id="pSubject"></span></p>
             </div>
-            <button class="sub-btn" onclick="submitAtt()">Submit Attendance</button>
         </div>
 
-        <!-- HISTORY -->
-        <div class="card">
-            <h3>📋 Attendance History</h3>
-            <table id="histTable">
-                <tr>
-                    <th>Student</th>
-                    <th>Roll No</th>
-                    <th>Date</th>
-                    <th>Status</th>
-                </tr>
-            </table>
+        <div id="section-classes" class="dash-section">
+            <div class="card">
+                <h3>📅 My Classes</h3>
+                <button class="btn btn-blue btn-toggle" onclick="showToday()">Today</button>
+                <button class="btn btn-teal btn-toggle" onclick="showWeekly()">Full Week</button>
+                <h4 id="viewTitle" style="margin-bottom:10px;color:#555"></h4>
+                <div id="classBox"></div>
+            </div>
+        </div>
+
+        <div id="section-mark" class="dash-section">
+            <div class="card">
+                <h3>Mark Attendance - Today (<span id="todayDateTxt"></span>)</h3>
+                <div id="attArea">
+                    <p style="color:#aaa">Loading students...</p>
+                </div>
+                <button class="sub-btn" onclick="submitAtt()">Submit Attendance</button>
+            </div>
+        </div>
+
+        <div id="section-history" class="dash-section">
+            <div class="card">
+                <h3>📋 Attendance History</h3>
+                <table id="histTable">
+                    <tr>
+                        <th>Student</th>
+                        <th>Roll No</th>
+                        <th>Date</th>
+                        <th>Status</th>
+                    </tr>
+                </table>
+            </div>
+
+            <div class="card">
+                <h3>📊 Attendance Summary (%)</h3>
+                <table id="sumTable"></table>
+            </div>
         </div>
 
     </div>
@@ -350,6 +395,13 @@
             location.href = "/"; // <-- goes back to home, not just reload
         }
 
+        function showSection(section, evt) {
+            document.querySelectorAll(".dash-section").forEach(s => s.classList.remove("active"));
+            document.querySelectorAll("#mentorNav button").forEach(b => b.classList.remove("active"));
+            document.getElementById("section-" + section).classList.add("active");
+            if (evt && evt.target) evt.target.classList.add("active");
+        }
+
         // ── LOAD DASHBOARD ──
         async function loadDashboard() {
             document.getElementById("loginBox").style.display = "none";
@@ -371,6 +423,7 @@
             showToday();
             await loadAttArea();
             await loadHistory();
+            await loadSummary();
         }
 
         // ── TODAY VIEW ──
@@ -408,17 +461,16 @@
                     return;
                 }
 
-                // Load students from DB
-                let r = await fetch("/api/students");
+                // Load only eligible students for this subject
+                let r = await fetch("/api/students?subject=" + encodeURIComponent(mentor.subject) + "&department=" + encodeURIComponent(mentor.department || ""));
                 let students = await r.json();
                 if (!Array.isArray(students)) {
                     area.innerHTML = "<p style='color:#e74c3c'>Could not load students. Please refresh or restart the server.</p>";
                     return;
                 }
-                students = students.filter(s => (s.department || "Computer Engineering") === (mentor.department || "Computer Engineering"));
 
                 if (!students.length) {
-                    area.innerHTML = "<p style='color:#aaa'>No students added yet. Ask admin to add students.</p>";
+                    area.innerHTML = "<p style='color:#aaa'>No eligible students for this subject. Ask admin to approve students and set subject mapping.</p>";
                     return;
                 }
 
@@ -532,6 +584,30 @@
                 sc.innerText = a.status;
                 sc.className = a.status;
             });
+        }
+
+        async function loadSummary() {
+            const t = document.getElementById("sumTable");
+            t.innerHTML = `<tr><th>Student</th><th>Roll No</th><th>Present</th><th>Absent</th><th>Total</th><th>%</th></tr>`;
+            try {
+                let r = await fetch("/api/attendance/summary?subject=" + encodeURIComponent(mentor.subject));
+                let data = await r.json();
+                if (!Array.isArray(data) || !data.length) {
+                    t.innerHTML += `<tr><td colspan="6" class="empty">No summary yet</td></tr>`;
+                    return;
+                }
+                data.forEach(x => {
+                    let tr = t.insertRow();
+                    tr.insertCell(0).innerText = x.student || "-";
+                    tr.insertCell(1).innerText = x.roll_no || "-";
+                    tr.insertCell(2).innerText = x.present ?? 0;
+                    tr.insertCell(3).innerText = x.absent ?? 0;
+                    tr.insertCell(4).innerText = x.total ?? 0;
+                    tr.insertCell(5).innerText = (x.percent ?? 0) + "%";
+                });
+            } catch (e) {
+                t.innerHTML += `<tr><td colspan="6" class="empty">Could not load summary</td></tr>`;
+            }
         }
 
         // Auto-login from session

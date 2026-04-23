@@ -40,6 +40,23 @@ def setup():
             subject TEXT NOT NULL,
             time    TEXT NOT NULL
         );
+        CREATE TABLE IF NOT EXISTS student_registrations (
+            id        INTEGER PRIMARY KEY AUTOINCREMENT,
+            name      TEXT NOT NULL,
+            roll_no   TEXT NOT NULL UNIQUE,
+            email     TEXT NOT NULL UNIQUE,
+            trade     TEXT NOT NULL,
+            password  TEXT NOT NULL,
+            status    TEXT NOT NULL DEFAULT 'pending',
+            created_at TEXT NOT NULL
+        );
+        CREATE TABLE IF NOT EXISTS student_subjects (
+            id      INTEGER PRIMARY KEY AUTOINCREMENT,
+            roll_no TEXT NOT NULL,
+            subject TEXT NOT NULL,
+            status  TEXT NOT NULL DEFAULT 'active',
+            UNIQUE(roll_no, subject)
+        );
         CREATE TABLE IF NOT EXISTS attendance (
             id      INTEGER PRIMARY KEY AUTOINCREMENT,
             student TEXT DEFAULT '',
@@ -53,6 +70,8 @@ def setup():
             id         INTEGER PRIMARY KEY AUTOINCREMENT,
             name       TEXT NOT NULL,
             roll_no    TEXT NOT NULL UNIQUE,
+            email      TEXT DEFAULT '',
+            trade      TEXT DEFAULT '',
             department TEXT NOT NULL DEFAULT 'Computer Engineering',
             password   TEXT NOT NULL
         );
@@ -98,6 +117,10 @@ def setup():
     student_cols = [r["name"] for r in con.execute("PRAGMA table_info(students)").fetchall()]
     if "department" not in student_cols:
         con.execute("ALTER TABLE students ADD COLUMN department TEXT DEFAULT 'Computer Engineering'")
+    if "email" not in student_cols:
+        con.execute("ALTER TABLE students ADD COLUMN email TEXT DEFAULT ''")
+    if "trade" not in student_cols:
+        con.execute("ALTER TABLE students ADD COLUMN trade TEXT DEFAULT ''")
 
     attendance_cols = [r["name"] for r in con.execute("PRAGMA table_info(attendance)").fetchall()]
     if "student" not in attendance_cols:
@@ -259,6 +282,27 @@ def update_schedule(body):
     con.close()
     return 200, {"message": "Updated"}
 
+def add_schedule(body):
+    day = body.get("day", "").strip()
+    subject = body.get("subject", "").strip()
+    time = body.get("time", "").strip()
+    if not day or not subject or not time:
+        return 400, {"error": "day, subject and time required"}
+    con = get_db()
+    try:
+        con.execute("INSERT INTO schedule(day, subject, time) VALUES(?, ?, ?)", (day, subject, time))
+        con.commit()
+        return 201, {"message": "Added"}
+    finally:
+        con.close()
+
+def delete_schedule(sid):
+    con = get_db()
+    con.execute("DELETE FROM schedule WHERE id=?", (sid,))
+    con.commit()
+    con.close()
+    return 200, {"message": "Deleted"}
+
 def mark_attendance(body):
     student = body.get("student", "").strip()
     roll_no = body.get("roll_no", "").strip().upper()
@@ -301,11 +345,215 @@ def get_attendance(subject=None, date=None):
     con.close()
     return 200, data
 
+def get_attendance_summary(roll_no=None, subject=None):
+    roll_no = (roll_no or "").strip().upper()
+    subject = (subject or "").strip()
+    con = get_db()
+    q = """
+        SELECT
+            MAX(COALESCE(NULLIF(TRIM(student), ''), NULL)) AS student,
+            roll_no,
+            subject,
+            SUM(CASE WHEN status='present' THEN 1 ELSE 0 END) AS present_count,
+            SUM(CASE WHEN status='absent'  THEN 1 ELSE 0 END) AS absent_count,
+            COUNT(*) AS total_classes
+        FROM attendance
+        WHERE 1=1
+    """
+    p = []
+    if roll_no:
+        q += " AND roll_no=?"
+        p.append(roll_no)
+    if subject:
+        q += " AND subject=?"
+        p.append(subject)
+    q += " GROUP BY roll_no, subject ORDER BY roll_no, subject"
+    raw = rows(con.execute(q, p).fetchall())
+    con.close()
+
+    out = []
+    for r in raw:
+        total = int(r.get("total_classes") or 0)
+        present = int(r.get("present_count") or 0)
+        absent = int(r.get("absent_count") or 0)
+        percent = round((present / total) * 100, 2) if total else 0.0
+        out.append({
+            "student": r.get("student") or "",
+            "roll_no": r.get("roll_no") or "",
+            "subject": r.get("subject") or "",
+            "present": present,
+            "absent": absent,
+            "total": total,
+            "percent": percent
+        })
+    return 200, out
+
 def get_students():
     con = get_db()
     data = rows(con.execute(
-        "SELECT id, name, roll_no, department FROM students ORDER BY roll_no"
+        "SELECT id, name, roll_no, email, trade, department FROM students ORDER BY roll_no"
     ).fetchall())
+    con.close()
+    return 200, data
+
+def get_subjects():
+    con = get_db()
+    data = rows(con.execute("""
+        SELECT DISTINCT subject
+        FROM schedule
+        WHERE subject IS NOT NULL
+          AND TRIM(subject) <> ''
+          AND subject <> 'Holiday'
+        ORDER BY subject
+    """).fetchall())
+    con.close()
+    return 200, [d["subject"] for d in data]
+
+def register_student(body):
+    name = body.get("name", "").strip()
+    roll_no = body.get("roll_no", "").strip().upper()
+    email = body.get("email", "").strip().lower()
+    trade = body.get("trade", "").strip()
+    password = body.get("password", "").strip()
+
+    if not name or not roll_no or not email or not password:
+        return 400, {"error": "Name, roll no, email and password are required"}
+
+    # Trade is optional; keep DB happy (trade column is NOT NULL)
+    trade = trade or "Computer Engineering"
+
+    con = get_db()
+    try:
+        con.execute("""
+            INSERT INTO student_registrations(name, roll_no, email, trade, password, status, created_at)
+            VALUES(?, ?, ?, ?, ?, 'pending', ?)
+        """, (name, roll_no, email, trade, pw(password), datetime.now().strftime("%Y-%m-%d %H:%M:%S")))
+        con.commit()
+        return 201, {"message": "Registration submitted. Wait for admin approval."}
+    except sqlite3.IntegrityError as e:
+        msg = str(e).lower()
+        if "roll_no" in msg:
+            return 409, {"error": "Roll number already exists or already requested"}
+        if "email" in msg:
+            return 409, {"error": "Email already exists or already requested"}
+        return 409, {"error": "Already requested"}
+    finally:
+        con.close()
+
+def get_registrations(status="pending"):
+    con = get_db()
+    if status:
+        data = rows(con.execute("""
+            SELECT id, name, roll_no, email, trade, status, created_at
+            FROM student_registrations
+            WHERE status=?
+            ORDER BY created_at DESC
+        """, (status,)).fetchall())
+    else:
+        data = rows(con.execute("""
+            SELECT id, name, roll_no, email, trade, status, created_at
+            FROM student_registrations
+            ORDER BY created_at DESC
+        """).fetchall())
+    con.close()
+    return 200, data
+
+def approve_registration(body):
+    rid = body.get("id")
+    if not rid:
+        return 400, {"error": "id required"}
+
+    con = get_db()
+    try:
+        reg = con.execute("""
+            SELECT * FROM student_registrations
+            WHERE id=? AND status='pending'
+        """, (rid,)).fetchone()
+        if not reg:
+            return 404, {"error": "Registration not found"}
+
+        con.execute("""
+            INSERT INTO students(name, roll_no, email, trade, department, password)
+            VALUES(?, ?, ?, ?, ?, ?)
+        """, (
+            reg["name"],
+            reg["roll_no"],
+            reg["email"],
+            (reg["trade"] or ""),
+            (reg["trade"] or "Computer Engineering"),
+            reg["password"]
+        ))
+        con.execute("UPDATE student_registrations SET status='approved' WHERE id=?", (rid,))
+        con.commit()
+        return 200, {"message": "Approved"}
+    except sqlite3.IntegrityError:
+        return 409, {"error": "Student already exists"}
+    finally:
+        con.close()
+
+def reject_registration(rid):
+    con = get_db()
+    con.execute("UPDATE student_registrations SET status='rejected' WHERE id=?", (rid,))
+    con.commit()
+    con.close()
+    return 200, {"message": "Rejected"}
+
+def get_student_subjects(roll_no):
+    con = get_db()
+    data = rows(con.execute("""
+        SELECT subject, status
+        FROM student_subjects
+        WHERE roll_no=?
+        ORDER BY subject
+    """, (roll_no.strip().upper(),)).fetchall())
+    con.close()
+    return 200, data
+
+def set_student_subjects(body):
+    roll_no = body.get("roll_no", "").strip().upper()
+    subjects = body.get("subjects", [])
+    if not roll_no or not isinstance(subjects, list):
+        return 400, {"error": "roll_no and subjects[] required"}
+
+    subjects = [s.strip() for s in subjects if isinstance(s, str) and s.strip()]
+    con = get_db()
+    try:
+        con.execute("DELETE FROM student_subjects WHERE roll_no=?", (roll_no,))
+        con.executemany(
+            "INSERT INTO student_subjects(roll_no, subject, status) VALUES(?, ?, 'active')",
+            [(roll_no, s) for s in subjects]
+        )
+        con.commit()
+        return 200, {"message": "Updated"}
+    finally:
+        con.close()
+
+def get_students_for_subject(subject, department=None):
+    subject = (subject or "").strip()
+    department = (department or "").strip()
+    if not subject:
+        return 400, {"error": "subject required"}
+
+    con = get_db()
+    p = [subject]
+    dept_sql = ""
+    if department:
+        dept_sql = " AND LOWER(s.department)=LOWER(?)"
+        p.append(department)
+
+    data = rows(con.execute(f"""
+        SELECT s.id, s.name, s.roll_no, s.email, s.trade, s.department
+        FROM students s
+        LEFT JOIN student_subjects ss
+          ON ss.roll_no = s.roll_no
+         AND ss.subject = ?
+        WHERE (
+            ss.subject IS NOT NULL
+            OR NOT EXISTS (SELECT 1 FROM student_subjects t WHERE t.roll_no = s.roll_no)
+        )
+        {dept_sql}
+        ORDER BY s.roll_no
+    """, p).fetchall())
     con.close()
     return 200, data
 
@@ -313,15 +561,17 @@ def add_student(body):
     name       = body.get("name", "").strip()
     roll_no    = body.get("roll_no", "").strip().upper()
     department = body.get("department", "Computer Engineering").strip()
+    email      = body.get("email", "").strip().lower()
+    trade      = body.get("trade", "").strip()
     password   = body.get("password", "").strip()
     if not name or not roll_no or not department or not password:
         return 400, {"error": "All fields required"}
     con = get_db()
     try:
-        con.execute(
-            "INSERT INTO students(name, roll_no, department, password) VALUES(?, ?, ?, ?)",
-            (name, roll_no, department, pw(password))
-        )
+        con.execute("""
+            INSERT INTO students(name, roll_no, email, trade, department, password)
+            VALUES(?, ?, ?, ?, ?, ?)
+        """, (name, roll_no, email, trade or department, department, pw(password)))
         con.commit()
         return 201, {"message": "Student added"}
     except sqlite3.IntegrityError:
@@ -418,11 +668,26 @@ class Handler(http.server.BaseHTTPRequestHandler):
             elif path == "/api/departments":
                 code, data = get_departments()
             elif path == "/api/students":
-                code, data = get_students()
+                if query.get("subject"):
+                    code, data = get_students_for_subject(query.get("subject"), query.get("department"))
+                else:
+                    code, data = get_students()
+            elif path == "/api/subjects":
+                code, data = get_subjects()
+            elif path == "/api/registrations":
+                code, data = get_registrations(query.get("status", "pending"))
+            elif path == "/api/student-subjects":
+                roll_no = query.get("roll_no", "").strip().upper()
+                if not roll_no:
+                    code, data = 400, {"error": "roll_no required"}
+                else:
+                    code, data = get_student_subjects(roll_no)
             elif path == "/api/schedule":
                 code, data = get_schedule(query.get("day"))
             elif path == "/api/attendance":
                 code, data = get_attendance(query.get("subject"), query.get("date"))
+            elif path == "/api/attendance/summary":
+                code, data = get_attendance_summary(query.get("roll_no"), query.get("subject"))
             else:
                 code, data = 404, {"error": "Not found"}
         except Exception as e:
@@ -440,14 +705,22 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 code, data = login_mentor(body)
             elif path == "/api/students/login":
                 code, data = login_student(body)
+            elif path == "/api/students/register":
+                code, data = register_student(body)
             elif path == "/api/students":
                 code, data = add_student(body)
             elif path == "/api/mentors":
                 code, data = add_mentor(body)
             elif path == "/api/schedule":
                 code, data = update_schedule(body)
+            elif path == "/api/schedule/add":
+                code, data = add_schedule(body)
             elif path == "/api/attendance":
                 code, data = mark_attendance(body)
+            elif path == "/api/registrations/approve":
+                code, data = approve_registration(body)
+            elif path == "/api/student-subjects":
+                code, data = set_student_subjects(body)
             else:
                 code, data = 404, {"error": "Not found"}
         except Exception as e:
@@ -461,6 +734,10 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 code, data = delete_mentor(parts[2])
             elif len(parts) == 3 and parts[1] == "students":
                 code, data = delete_student(parts[2])
+            elif len(parts) == 3 and parts[1] == "schedule":
+                code, data = delete_schedule(parts[2])
+            elif len(parts) == 3 and parts[1] == "registrations":
+                code, data = reject_registration(parts[2])
             else:
                 code, data = 404, {"error": "Not found"}
         except Exception as e:

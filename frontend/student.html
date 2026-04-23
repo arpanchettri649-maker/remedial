@@ -45,6 +45,36 @@
             margin: 20px auto;
             padding: 0 15px;
         }
+
+        .nav {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-bottom: 16px;
+        }
+
+        .nav button {
+            background: #d8e9f5;
+            color: #1f6391;
+            border: none;
+            padding: 9px 14px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 13px;
+        }
+
+        .nav button.active {
+            background: #2980b9;
+            color: white;
+        }
+
+        .dash-section {
+            display: none;
+        }
+
+        .dash-section.active {
+            display: block;
+        }
         
         .card {
             background: white;
@@ -183,49 +213,116 @@
             <input type="text" id="sRoll" placeholder="Enter Roll Number">
             <input type="password" id="sPass" placeholder="Enter Password" onkeydown="if(event.key==='Enter') doLogin()">
             <button class="btn" onclick="doLogin()">Login</button>
+            <button class="btn" style="margin-top:10px;background:#1abc9c" onclick="showRegister()">New Registration</button>
             <p class="err-msg" id="loginErr">Wrong roll number or password!</p>
+        </div>
+    </div>
+
+    <!-- REGISTRATION -->
+    <div class="container" id="regBox" style="display:none">
+        <div class="card">
+            <h3>📝 Student Registration (Admin Approval Required)</h3>
+            <input type="text" id="rName" placeholder="Full Name">
+            <input type="text" id="rRoll" placeholder="Roll Number">
+            <input type="text" id="rEmail" placeholder="E-mail">
+            <input type="text" id="rTrade" placeholder="Trade (optional, e.g. Computer Engineering)">
+            <input type="password" id="rPass" placeholder="Password">
+            <button class="btn" onclick="submitReg()">Submit Registration</button>
+            <button class="btn" style="margin-top:10px;background:#7f8c8d" onclick="backToLogin()">Back to Login</button>
+            <p class="err-msg" id="regErr"></p>
+            <p style="margin-top:10px;color:#2980b9;display:none" id="regOk"></p>
         </div>
     </div>
 
     <!-- DASHBOARD -->
     <div class="container" id="dashboard" style="display:none">
+        <div class="nav" id="studentNav">
+            <button class="active" onclick="showSection('profile', event)">Profile</button>
+            <button onclick="showSection('today', event)">Today Class</button>
+            <button onclick="showSection('week', event)">Weekly Routine</button>
+            <button onclick="showSection('attendance', event)">My Attendance</button>
+        </div>
 
-        <!-- PROFILE -->
-        <div class="card">
-            <h3>👤 My Profile</h3>
-            <div class="profile-row">
-                <div class="profile-item"><b>Name:</b> <span id="pName"></span></div>
-                <div class="profile-item"><b>Roll No:</b> <span id="pRoll"></span></div>
-                <div class="profile-item"><b>Department:</b> <span id="pDept"></span></div>
-                <div class="profile-item"><b>Today:</b> <span id="pToday"></span></div>
-                <div class="profile-item"><b>Teacher:</b> <span id="pTeacher"></span></div>
+        <div id="section-profile" class="dash-section active">
+            <div class="card">
+                <h3>👤 My Profile</h3>
+                <div class="profile-row">
+                    <div class="profile-item"><b>Name:</b> <span id="pName"></span></div>
+                    <div class="profile-item"><b>Roll No:</b> <span id="pRoll"></span></div>
+                    <div class="profile-item"><b>Department:</b> <span id="pDept"></span></div>
+                    <div class="profile-item"><b>Today:</b> <span id="pToday"></span></div>
+                    <div class="profile-item"><b>Teacher:</b> <span id="pTeacher"></span></div>
+                </div>
             </div>
         </div>
 
-        <!-- TODAY SCHEDULE -->
-        <div class="card">
-            <h3>📅 Today's Class</h3>
-            <table id="todayTable"></table>
-            <p class="highlight" id="todayMsg"></p>
+        <div id="section-today" class="dash-section">
+            <div class="card">
+                <h3>📅 Today's Class</h3>
+                <table id="todayTable"></table>
+                <p class="highlight" id="todayMsg"></p>
+            </div>
         </div>
 
-        <!-- FULL WEEK -->
-        <div class="card">
-            <h3>📆 Full Weekly Schedule</h3>
-            <table id="weekTable"></table>
+        <div id="section-week" class="dash-section">
+            <div class="card">
+                <h3>📆 Full Weekly Schedule</h3>
+                <table id="weekTable"></table>
+            </div>
         </div>
 
-        <!-- MY ATTENDANCE -->
-        <div class="card">
-            <h3>✅ My Attendance</h3>
-            <table id="attTable"></table>
+        <div id="section-attendance" class="dash-section">
+            <div class="card">
+                <h3>✅ My Attendance</h3>
+                <table id="attTable"></table>
+            </div>
         </div>
 
     </div>
 
     <script>
         let student = null;
+        let allowedSubjects = null; // null => no restriction
         const DAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+
+        function showRegister() {
+            document.getElementById("loginBox").style.display = "none";
+            document.getElementById("regBox").style.display = "block";
+            document.getElementById("regErr").style.display = "none";
+            document.getElementById("regOk").style.display = "none";
+        }
+
+        function backToLogin() {
+            document.getElementById("regBox").style.display = "none";
+            document.getElementById("loginBox").style.display = "block";
+        }
+
+        async function submitReg() {
+            const name = document.getElementById("rName").value.trim();
+            const roll_no = document.getElementById("rRoll").value.trim().toUpperCase();
+            const email = document.getElementById("rEmail").value.trim();
+            const trade = document.getElementById("rTrade").value.trim();
+            const password = document.getElementById("rPass").value.trim();
+            if (!name || !roll_no || !email || !password) return alert("Fill all fields");
+
+            const r = await fetch("/api/students/register", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ name, roll_no, email, trade, password })
+            });
+            const data = await r.json();
+            if (!r.ok || data.error) {
+                const el = document.getElementById("regErr");
+                el.innerText = data.error || "Registration failed";
+                el.style.display = "block";
+                return;
+            }
+            ["rName", "rRoll", "rEmail", "rTrade", "rPass"].forEach(id => document.getElementById(id).value = "");
+            document.getElementById("regErr").style.display = "none";
+            const ok = document.getElementById("regOk");
+            ok.innerText = data.message || "Submitted. Wait for admin approval.";
+            ok.style.display = "block";
+        }
 
         // ── LOGIN ──
         async function doLogin() {
@@ -259,9 +356,17 @@
             location.href = "/"; // <-- back to home page
         }
 
+        function showSection(section, evt) {
+            document.querySelectorAll(".dash-section").forEach(s => s.classList.remove("active"));
+            document.querySelectorAll("#studentNav button").forEach(b => b.classList.remove("active"));
+            document.getElementById("section-" + section).classList.add("active");
+            if (evt && evt.target) evt.target.classList.add("active");
+        }
+
         // ── DASHBOARD ──
         async function loadDashboard() {
             document.getElementById("loginBox").style.display = "none";
+            document.getElementById("regBox").style.display = "none";
             document.getElementById("dashboard").style.display = "block";
             document.getElementById("topbar").style.display = "flex";
             document.getElementById("loginErr").style.display = "none";
@@ -269,8 +374,18 @@
             let todayName = DAYS[new Date().getDay()];
             document.getElementById("pName").innerText = student.name;
             document.getElementById("pRoll").innerText = student.roll_no;
-            document.getElementById("pDept").innerText = student.department || "Computer Engineering";
+            document.getElementById("pDept").innerText = student.trade || student.department || "Computer Engineering";
             document.getElementById("pToday").innerText = todayName;
+
+            // Load allowed subjects (if admin set any)
+            allowedSubjects = null;
+            try {
+                let sr = await fetch("/api/student-subjects?roll_no=" + encodeURIComponent(student.roll_no));
+                let sdata = await sr.json();
+                if (Array.isArray(sdata) && sdata.length) {
+                    allowedSubjects = sdata.map(x => x.subject);
+                }
+            } catch (e) { /* ignore */ }
 
             await loadToday(todayName);
             await loadWeek();
@@ -288,20 +403,34 @@
 
             t.innerHTML = `<tr><th>Day</th><th>Subject</th><th>Time</th><th>Teacher</th></tr>`;
 
-            if (schedule.length) {
-                let item = schedule[0];
-                let teacher = mentors.find(m => m.subject === item.subject);
-                let tName = teacher ? teacher.name : "Not Assigned";
+            if (Array.isArray(schedule) && schedule.length) {
+                let list = schedule.filter(x => x.subject && x.subject !== "Holiday");
+                if (allowedSubjects && allowedSubjects.length) {
+                    list = list.filter(x => allowedSubjects.includes(x.subject));
+                }
 
-                document.getElementById("pTeacher").innerText = tName;
+                if (!list.length) {
+                    t.innerHTML += `<tr><td colspan="4" class="empty">No class today</td></tr>`;
+                    msg.innerText = "";
+                    document.getElementById("pTeacher").innerText = "-";
+                    return;
+                }
 
-                let tr = t.insertRow();
-                tr.insertCell(0).innerText = item.day;
-                tr.insertCell(1).innerText = item.subject;
-                tr.insertCell(2).innerText = item.time;
-                tr.insertCell(3).innerText = tName;
+                // Show first teacher in profile (if multiple, show '-')
+                let firstTeacher = mentors.find(m => m.subject === list[0].subject);
+                document.getElementById("pTeacher").innerText = firstTeacher ? firstTeacher.name : "-";
 
-                msg.innerText = item.subject === "Holiday" ? "🎉 Enjoy your holiday!" : "📖 Be ready for your class!";
+                list.forEach(item => {
+                    let teacher = mentors.find(m => m.subject === item.subject);
+                    let tName = teacher ? teacher.name : "Not Assigned";
+                    let tr = t.insertRow();
+                    tr.insertCell(0).innerText = item.day;
+                    tr.insertCell(1).innerText = item.subject;
+                    tr.insertCell(2).innerText = item.time;
+                    tr.insertCell(3).innerText = tName;
+                });
+
+                msg.innerText = "📖 Be ready for your class!";
             } else {
                 t.innerHTML += `<tr><td colspan="4" class="empty">No class today</td></tr>`;
                 msg.innerText = "";
@@ -318,7 +447,18 @@
             let t = document.getElementById("weekTable");
             t.innerHTML = `<tr><th>Day</th><th>Subject</th><th>Time</th><th>Teacher</th></tr>`;
 
-            schedule.forEach(item => {
+            let list = Array.isArray(schedule) ? schedule : [];
+            list = list.filter(x => x.subject && x.subject !== "Holiday");
+            if (allowedSubjects && allowedSubjects.length) {
+                list = list.filter(x => allowedSubjects.includes(x.subject));
+            }
+
+            if (!list.length) {
+                t.innerHTML += `<tr><td colspan="4" class="empty">No classes assigned</td></tr>`;
+                return;
+            }
+
+            list.forEach(item => {
                 let teacher = mentors.find(m => m.subject === item.subject);
                 let tr = t.insertRow();
                 tr.insertCell(0).innerText = item.day;
@@ -351,6 +491,22 @@
                 sc.innerText = a.status;
                 sc.className = a.status;
             });
+
+            // Summary by subject
+            try {
+                let sr = await fetch("/api/attendance/summary?roll_no=" + encodeURIComponent(student.roll_no));
+                let sum = await sr.json();
+                if (Array.isArray(sum) && sum.length) {
+                    t.innerHTML += `<tr><th colspan="3">Summary (Present/Absent/%)</th></tr>`;
+                    sum.forEach(x => {
+                        t.innerHTML += `<tr>
+                          <td>${x.subject}</td>
+                          <td>Present: ${x.present} / Absent: ${x.absent} / Total: ${x.total}</td>
+                          <td>${x.percent}%</td>
+                        </tr>`;
+                    });
+                }
+            } catch (e) { /* ignore */ }
         }
 
         // Auto-login from session
